@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Points & Wallet Bot — Demo Console</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161d27; --panel2:#1c2530; --accent:#3aa0ff;
+    --accent2:#33c17a; --danger:#ff5d5d; --warn:#ffb020; --text:#e8edf2;
+    --muted:#8a97a6; --border:#26303c; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:linear-gradient(180deg,#0b0f14,#0f1419); color:var(--text); min-height:100vh;
+  }
+  header{
+    padding:18px 20px; display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(15,20,25,.92);
+    backdrop-filter:blur(6px); z-index:10;
+  }
+  header h1{font-size:17px; margin:0; display:flex; align-items:center; gap:8px;}
+  select{
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; font-size:14px;
+  }
+  .wrap{max-width:480px; margin:0 auto; padding:16px;}
+  nav.tabs{
+    display:flex; gap:6px; overflow-x:auto; padding:10px 16px; border-bottom:1px solid var(--border);
+    background:rgba(15,20,25,.92); position:sticky; top:57px; z-index:9;
+  }
+  nav.tabs button{
+    flex:0 0 auto; background:var(--panel2); color:var(--muted); border:1px solid var(--border);
+    padding:8px 12px; border-radius:20px; font-size:13px; cursor:pointer; white-space:nowrap;
+  }
+  nav.tabs button.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px; margin-bottom:14px;
+  }
+  .card h2{font-size:15px; margin:0 0 10px; color:var(--text);}
+  .row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:14px;}
+  .row:last-child{border-bottom:none;}
+  .muted{color:var(--muted); font-size:12.5px;}
+  .balance{
+    background:linear-gradient(135deg,#1b3a5c,#12283f); border-radius:var(--radius); padding:20px;
+    margin-bottom:14px; border:1px solid #24445f;
+  }
+  .balance .pts{font-size:30px; font-weight:700;}
+  .balance .etb{color:var(--muted); font-size:13px; margin-top:2px;}
+  .btnrow{display:flex; gap:8px; margin-top:14px;}
+  button.action{
+    flex:1; padding:11px; border:none; border-radius:10px; font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .primary{background:var(--accent); color:#fff;}
+  .secondary{background:var(--panel2); color:var(--text); border:1px solid var(--border);}
+  .success{background:var(--accent2); color:#08240f;}
+  .danger{background:var(--danger); color:#2a0505;}
+  .pill{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
+  .pill.pending{background:#3a2f10; color:var(--warn);}
+  .pill.approved{background:#0f2e1c; color:var(--accent2);}
+  .pill.rejected{background:#3a1414; color:var(--danger);}
+  input, textarea{
+    width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    padding:10px; border-radius:8px; font-size:14px; margin-top:6px;
+  }
+  label{font-size:12.5px; color:var(--muted); display:block; margin-top:10px;}
+  .refbox{
+    background:var(--panel2); border:1px dashed var(--accent); border-radius:10px; padding:12px;
+    font-size:13px; word-break:break-all; margin-top:8px; display:flex; justify-content:space-between; gap:8px; align-items:center;
+  }
+  .copybtn{background:var(--accent); border:none; color:#fff; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer; flex-shrink:0;}
+  .hidden{display:none !important;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .stat{background:var(--panel2); border-radius:10px; padding:12px; text-align:center;}
+  .stat .num{font-size:20px; font-weight:700;}
+  .stat .lbl{font-size:11px; color:var(--muted); margin-top:2px;}
+  .toast{
+    position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--panel2);
+    border:1px solid var(--accent); color:var(--text); padding:10px 18px; border-radius:30px;
+    font-size:13px; opacity:0; pointer-events:none; transition:opacity .25s; z-index:50;
+  }
+  .toast.show{opacity:1;}
+  .admin-badge{background:var(--danger); color:#fff; font-size:10px; padding:2px 6px; border-radius:6px; margin-left:6px;}
+  footer{text-align:center; color:var(--muted); font-size:11.5px; padding:24px 16px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🤖 <span data-i18n="botname">Points &amp; Wallet Bot</span></h1>
+  <select id="langSelect" onchange="setLang(this.value)">
+    <option value="en">English</option>
+    <option value="am">አማርኛ</option>
+    <option value="om">Afaan Oromoo</option>
+  </select>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="wallet" onclick="showTab('wallet')" data-i18n="tab_wallet">💳 Wallet</button>
+  <button data-tab="points" onclick="showTab('points')" data-i18n="tab_points">📊 Points</button>
+  <button data-tab="referral" onclick="showTab('referral')" data-i18n="tab_referral">🎁 Invite</button>
+  <button data-tab="support" onclick="showTab('support')" data-i18n="tab_support">📞 Support</button>
+  <button data-tab="status" onclick="showTab('status')" data-i18n="tab_status">🚨 Status</button>
+  <button data-tab="admin" onclick="showTab('admin')" data-i18n="tab_admin">🛠 Admin</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- WALLET -->
+  <section id="tab-wallet">
+    <div class="balance">
+      <div class="muted" data-i18n="current_balance">Current Balance</div>
+      <div class="pts"><span id="ptsBalance">0</span> <span data-i18n="pts">pts</span></div>
+      <div class="etb"><span id="etbBalance">0</span> ETB · <span data-i18n="rate">1 Point = 15 ETB</span></div>
+      <div class="btnrow">
+        <button class="action primary" onclick="showTab('deposit')" data-i18n="deposit_btn">➕ Deposit</button>
+        <button class="action secondary" onclick="showTab('history')" data-i18n="history_btn">📊 History</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="recent_tx">Recent Transactions</h2>
+      <div id="recentTxList"></div>
+    </div>
+  </section>
+
+  <!-- DEPOSIT -->
+  <section id="tab-deposit" class="hidden">
+    <div class="card">
+      <h2 data-i18n="new_deposit">New Deposit</h2>
+      <label data-i18n="amount_etb">Amount (ETB)</label>
+      <input type="number" id="depAmount" placeholder="e.g. 150" min="15" step="15">
+      <label data-i18n="method">Payment Method</label>
+      <select id="depMethod" style="width:100%; margin-top:6px;">
+        <option value="telebirr">Telebirr</option>
+        <option value="cbe">CBE Birr</option>
+        <option value="bank">Bank Transfer</option>
+      </select>
+      <label data-i18n="ref_number">Transaction Reference Number</label>
+      <input type="text" id="depRef" placeholder="e.g. FT26238KX9">
+      <label data-i18n="receipt">Receipt (screenshot filename)</label>
+      <input type="file" id="depReceipt">
+      <div class="btnrow">
+        <button class="action primary" onclick="submitDeposit()" data-i18n="submit_deposit">Submit for Review</button>
+      </div>
+      <p class="muted" style="margin-top:10px;" data-i18n="deposit_note">Points are credited only after admin approval — never automatically on upload.</p>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="tab-history" class="hidden">
+    <div class="card">
+      <h2 data-i18n="tx_history">Transaction History</h2>
+      <div id="fullTxList"></div>
+    </div>
+  </section>
+
+  <!-- POINTS -->
+  <section id="tab-points" class="hidden">
+    <div class="card">
+      <h2 data-i18n="my_points">My Points</h2>
+      <div class="grid2">
+        <div class="stat"><div class="num" id="statCurrent">0</div><div class="lbl" data-i18n="current">Current</div></div>
+        <div class="stat"><div class="num" id="statUsed">0</div><div class="lbl" data-i18n="used">Used</div></div>
+        <div class="stat"><div class="num" id="statEarned">0</div><div class="lbl" data-i18n="earned">Earned</div></div>
+        <div class="stat"><div class="num" id="statReferral">0</div><div class="lbl" data-i18n="referral_rewards">Referral Rewards</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REFERRAL -->
+  <section id="tab-referral" class="hidden">
+    <div class="card">
+      <h2 data-i18n="invite_earn">Invite &amp; Earn</h2>
+      <p class="muted" data-i18n="invite_desc">Share your link. Both of you get a reward when your friend completes a qualifying purchase.</p>
+      <div class="refbox">
+        <span id="refLink">https://t.me/YourBot?start=REF12345</span>
+        <button class="copybtn" onclick="copyRef()" data-i18n="copy">Copy</button>
+      </div>
+      <div class="grid2" style="margin-top:14px;">
+        <div class="stat"><div class="num" id="refCount">0</div><div class="lbl" data-i18n="invited">Invited</div></div>
+        <div class="stat"><div class="num" id="refReward">0</div><div class="lbl" data-i18n="reward_pts">Reward (pts)</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUPPORT -->
+  <section id="tab-support" class="hidden">
+    <div class="card">
+      <h2 data-i18n="need_help">Need Help?</h2>
+      <div class="row"><span data-i18n="support_contact">Support</span><span>@naid_support</span></div>
+      <div class="row"><span data-i18n="group">Group</span><span>@fayda_issues</span></div>
+      <div class="row"><span data-i18n="channel">Channel</span><span>@fayda_issue</span></div>
+      <div class="btnrow">
+        <button class="action primary" data-i18n="contact_support">Contact Support</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATUS -->
+  <section id="tab-status" class="hidden">
+    <div class="card">
+      <h2 data-i18n="system_status">System Status</h2>
+      <div id="statusBanner" class="row" style="border:none;">
+        <span data-i18n="status_label">Status</span>
+        <span class="pill approved" id="statusPill">🟢 Operational</span>
+      </div>
+      <p class="muted" id="statusMsg" data-i18n="status_ok_msg">All services are currently available.</p>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section id="tab-admin" class="hidden">
+    <div class="card">
+      <h2 data-i18n="admin_dashboard">Admin Dashboard <span class="admin-badge">DEMO</span></h2>
+      <div class="grid2">
+        <div class="stat"><div class="num">128</div><div class="lbl" data-i18n="total_users">Total Users</div></div>
+        <div class="stat"><div class="num">34</div><div class="lbl" data-i18n="active_users">Active Users</div></div>
+        <div class="stat"><div class="num" id="adminPending">0</div><div class="lbl" data-i18n="pending_payments">Pending Payments</div></div>
+        <div class="stat"><div class="num" id="adminRevenue">0</div><div class="lbl" data-i18n="revenue_etb">Revenue (ETB)</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="pending_review">Pending Deposit Review</h2>
+      <div id="adminPendingList"></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="broadcast">Broadcast Announcement</h2>
+      <textarea id="broadcastText" rows="3" placeholder="Message to all users..."></textarea>
+      <div class="btnrow">
+        <button class="action primary" onclick="sendBroadcast()" data-i18n="send">Send</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="fayda_status_control">Fayda System Status (admin control)</h2>
+      <select id="statusSelect" onchange="setStatus(this.value)" style="width:100%;">
+        <option value="operational">🟢 Operational</option>
+        <option value="limited">🟡 Limited</option>
+        <option value="offline">🔴 Offline / Maintenance</option>
+      </select>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer data-i18n="footer_note">Demo UI only — no real payments, Telegram connection, or ID processing occurs here.</footer>
+
+<script>
+// ---------- State (localStorage-backed demo data) ----------
+const state = JSON.parse(localStorage.getItem('botDemoState') || 'null') || {
+  points: 12, used: 8, earned: 23, referralPts: 5,
+  refCount: 3, refCode: 'REF12345',
+  status: 'operational',
+  tx: [
+    {id:1, amount:150, method:'telebirr', ref:'FT26238KX9', status:'approved', date:'2026-08-20'},
+    {id:2, amount:75, method:'cbe', ref:'CBE99201', status:'pending', date:'2026-08-24'}
+  ]
+};
+function save(){ localStorage.setItem('botDemoState', JSON.stringify(state)); }
+
+// ---------- i18n ----------
+const i18n = {
+  en: {
+    botname:"Points & Wallet Bot", tab_wallet:"💳 Wallet", tab_points:"📊 Points", tab_referral:"🎁 Invite",
+    tab_support:"📞 Support", tab_status:"🚨 Status", tab_admin:"🛠 Admin",
+    current_balance:"Current Balance", pts:"pts", rate:"1 Point = 15 ETB",
+    deposit_btn:"➕ Deposit", history_btn:"📊 History", recent_tx:"Recent Transactions",
+    new_deposit:"New Deposit", amount_etb:"Amount (ETB)", method:"Payment Method",
+    ref_number:"Transaction Reference Number", receipt:"Receipt (screenshot filename)",
+    submit_deposit:"Submit for Review",
+    deposit_note:"Points are credited only after admin approval — never automatically on upload.",
+    tx_history:"Transaction History", my_points:"My Points", current:"Current", used:"Used",
+    earned:"Earned", referral_rewards:"Referral Rewards", invite_earn:"Invite & Earn",
+    invite_desc:"Share your link. Both of you get a reward when your friend completes a qualifying purchase.",
+    copy:"Copy", invited:"Invited", reward_pts:"Reward (pts)", need_help:"Need Help?",
+    support_contact:"Support", group:"Group", channel:"Channel", contact_support:"Contact Support",
+    system_status:"System Status", status_label:"Status", status_ok_msg:"All services are currently available.",
+    admin_dashboard:"Admin Dashboard", total_users:"Total Users", active_users:"Active Users",
+    pending_payments:"Pending Payments", revenue_etb:"Revenue (ETB)", pending_review:"Pending Deposit Review",
+    broadcast:"Broadcast Announcement", send:"Send", fayda_status_control:"Fayda System Status (admin control)",
+    footer_note:"Demo UI only — no real payments, Telegram connection, or ID processing occurs here.",
+    approve:"Approve", reject:"Reject"
+  },
+  am: {
+    botname:"የነጥብ እና የቦርሳ ቦት", tab_wallet:"💳 ቦርሳ", tab_points:"📊 ነጥቦች", tab_referral:"🎁 ጋብዝ",
+    tab_support:"📞 ድጋፍ", tab_status:"🚨 ሁኔታ", tab_admin:"🛠 አስተዳደር",
+    current_balance:"የአሁኑ ሂሳብ", pts:"ነጥቦች", rate:"1 ነጥብ = 15 ብር",
+    deposit_btn:"➕ ገቢ አድርግ", history_btn:"📊 ታሪክ", recent_tx:"የቅርብ ጊዜ ግብይቶች",
+    new_deposit:"አዲስ ገቢ", amount_etb:"መጠን (ብር)", method:"የክፍያ ዘዴ",
+    ref_number:"የግብይት ማጣቀሻ ቁጥር", receipt:"ደረሰኝ (የስክሪንሾት ፋይል ስም)",
+    submit_deposit:"ለግምገማ አስገባ",
+    deposit_note:"ነጥቦች የሚከፈሉት ከአስተዳዳሪ ማረጋገጫ በኋላ ብቻ ነው — በፋይል መላክ ብቻ በራስ-ሰር አይከፈልም።",
+    tx_history:"የግብይት ታሪክ", my_points:"የእኔ ነጥቦች", current:"አሁን ያለ", used:"ጥቅም ላይ የዋለ",
+    earned:"የተገኘ", referral_rewards:"የጋብዝ ሽልማት", invite_earn:"ጋብዝ እና አግኝ",
+    invite_desc:"ሊንክዎን ያጋሩ። ጓደኛዎ ብቁ ግዢ ሲፈጽም ሁለታችሁም ሽልማት ታገኛላችሁ።",
+    copy:"ቅዳ", invited:"የተጋበዙ", reward_pts:"ሽልማት (ነጥብ)", need_help:"እርዳታ ይፈልጋሉ?",
+    support_contact:"ድጋፍ", group:"ቡድን", channel:"ቻናል", contact_support:"ድጋፍን አግኙ",
+    system_status:"የስርዓት ሁኔታ", status_label:"ሁኔታ", status_ok_msg:"ሁሉም አገልግሎቶች በአሁኑ ጊዜ ይገኛሉ።",
+    admin_dashboard:"የአስተዳዳሪ ዳሽቦርድ", total_users:"ጠቅላላ ተጠቃሚዎች", active_users:"ንቁ ተጠቃሚዎች",
+    pending_payments:"በመጠባበቅ ላይ ያሉ ክፍያዎች", revenue_etb:"ገቢ (ብር)", pending_review:"በመጠባበቅ ላይ ያለ ግምገማ",
+    broadcast:"ማስታወቂያ ላክ", send:"ላክ", fayda_status_control:"የፋይዳ ስርዓት ሁኔታ (የአስተዳዳሪ ቁጥጥር)",
+    footer_note:"ይህ ለማሳያ ብቻ ነው — ትክክለኛ ክፍያ፣ የቴሌግራም ግንኙነት ወይም የመታወቂያ ሂደት አይከናወንም።",
+    approve:"አጽድቅ", reject:"አትቀበል"
+  },
+  om: {
+    botname:"Bot Qabsiisa & Boorsaa", tab_wallet:"💳 Boorsaa", tab_points:"📊 Qabxii", tab_referral:"🎁 Afeeri",
+    tab_support:"📞 Deggarsa", tab_status:"🚨 Haala", tab_admin:"🛠 Bulchiinsa",
+    current_balance:"Haromsa Ammaa", pts:"qabxii", rate:"Qabxii 1 = Birrii 15",
+    deposit_btn:"➕ Galchi", history_btn:"📊 Seenaa", recent_tx:"Daldalawwan Dhiyeenya",
+    new_deposit:"Galii Haaraa", amount_etb:"Hanga (Birrii)", method:"Mala Kaffaltii",
+    ref_number:"Lakkoofsa Wabii Daldalaa", receipt:"Ragaa (maqaa faayilii suuraa)",
+    submit_deposit:"Ilaalcha Dabarsi",
+    deposit_note:"Qabxiin kan galchamu erga bulchaan mirkaneesse booda qofa — suuraa fe'uun qofti ofumaan hin galchisiisu.",
+    tx_history:"Seenaa Daldalaa", my_points:"Qabxii Koo", current:"Ammaa", used:"Itti Fayyadame",
+    earned:"Argate", referral_rewards:"Badhaasa Afeerraa", invite_earn:"Afeeri fi Argadhu",
+    invite_desc:"Liinkii kee qoodi. Michuun kee bittaa mirkanaa'e yeroo raawwatu lachuu badhaasa argattu.",
+    copy:"Garagalchi", invited:"Afeeraman", reward_pts:"Badhaasa (qabxii)", need_help:"Gargaarsa Barbaaddaa?",
+    support_contact:"Deggarsa", group:"Garee", channel:"Chaanaalii", contact_support:"Deggarsa Qunnamaa",
+    system_status:"Haala Sirna", status_label:"Haala", status_ok_msg:"Tajaajiloonni hundi amma ni argamu.",
+    admin_dashboard:"Daashboordii Bulchaa", total_users:"Fayyadamtoota Waliigalaa", active_users:"Fayyadamtoota Sochii Qaban",
+    pending_payments:"Kaffaltii Eegamaa Jiru", revenue_etb:"Galii (Birrii)", pending_review:"Ilaalcha Eegamaa",
+    broadcast:"Beeksisa Erguu", send:"Ergi", fayda_status_control:"Haala Sirna Faaydaa (to'annoo bulchaa)",
+    footer_note:"Kun agarsiisa demo qofa — kaffaltiin dhugaa, walqunnamtiin Telegram, ykn adeemsi ID hin jiru.",
+    approve:"Mirkaneessi", reject:"Didi"
+  }
+};
+let lang = localStorage.getItem('botDemoLang') || 'en';
+
+function applyI18n(){
+  document.getElementById('langSelect').value = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(i18n[lang][key]) el.textContent = i18n[lang][key];
+  });
+}
+function setLang(l){ lang = l; localStorage.setItem('botDemoLang', l); applyI18n(); renderAll(); }
+
+// ---------- Tabs ----------
+function showTab(name){
+  document.querySelectorAll('[id^="tab-"]').forEach(s=>s.classList.add('hidden'));
+  const el = document.getElementById('tab-'+name);
+  if(el) el.classList.remove('hidden');
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+  const btn = document.querySelector(`nav.tabs button[data-tab="${name}"]`);
+  if(btn) btn.classList.add('active');
+  if(name==='wallet'||name==='deposit'||name==='history') renderWallet();
+  if(name==='points') renderPoints();
+  if(name==='referral') renderReferral();
+  if(name==='admin') renderAdmin();
+  if(name==='status') renderStatus();
+}
+
+// ---------- Toast ----------
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ---------- Wallet ----------
+function renderWallet(){
+  document.getElementById('ptsBalance').textContent = state.points;
+  document.getElementById('etbBalance').textContent = state.points*15;
+  const recent = state.tx.slice(-3).reverse();
+  document.getElementById('recentTxList').innerHTML = recent.map(txRow).join('') || `<p class="muted">No transactions yet.</p>`;
+  document.getElementById('fullTxList').innerHTML = state.tx.slice().reverse().map(txRow).join('') || `<p class="muted">No transactions yet.</p>`;
+}
+function txRow(t){
+  return `<div class="row"><span>${t.amount} ETB · ${t.method}<br><span class="muted">${t.ref} · ${t.date}</span></span>
+    <span class="pill ${t.status}">${t.status}</span></div>`;
+}
+function submitDeposit(){
+  const amount = parseFloat(document.getElementById('depAmount').value);
+  const method = document.getElementById('depMethod').value;
+  const ref = document.getElementById('depRef').value.trim();
+  if(!amount || amount < 15 || !ref){ toast('Please fill amount (≥15) and reference number'); return; }
+  state.tx.push({id: Date.now(), amount, method, ref, status:'pending', date: new Date().toISOString().slice(0,10)});
+  save(); renderWallet(); renderAdmin();
+  document.getElementById('depAmount').value=''; document.getElementById('depRef').value='';
+  toast('Submitted — awaiting admin approval');
+  showTab('wallet');
+}
+
+// ---------- Points ----------
+function renderPoints(){
+  document.getElementById('statCurrent').textContent = state.points;
+  document.getElementById('statUsed').textContent = state.used;
+  document.getElementById('statEarned').textContent = state.earned;
+  document.getElementById('statReferral').textContent = state.referralPts;
+}
+
+// ---------- Referral ----------
+function renderReferral(){
+  document.getElementById('refLink').textContent = `https://t.me/YourBot?start=${state.refCode}`;
+  document.getElementById('refCount').textContent = state.refCount;
+  document.getElementById('refReward').textContent = state.referralPts;
+}
+function copyRef(){
+  navigator.clipboard?.writeText(`https://t.me/YourBot?start=${state.refCode}`);
+  toast('Referral link copied');
+}
+
+// ---------- Status ----------
+const statusMap = {
+  operational: {pill:'🟢 Operational', cls:'approved', msgKey:'status_ok_msg'},
+  limited: {pill:'🟡 Limited', cls:'pending', msgKey:'status_ok_msg'},
+  offline: {pill:'🔴 Offline / Maintenance', cls:'rejected', msgKey:'status_ok_msg'}
+};
+function renderStatus(){
+  const s = statusMap[state.status];
+  const pillEl = document.getElementById('statusPill');
+  pillEl.textContent = s.pill;
+  pillEl.className = 'pill ' + s.cls;
+  document.getElementById('statusSelect').value = state.status;
+}
+function setStatus(v){
+  state.status = v; save(); renderStatus();
+  toast('Status updated to: ' + v);
+}
+
+// ---------- Admin ----------
+function renderAdmin(){
+  const pending = state.tx.filter(t=>t.status==='pending');
+  document.getElementById('adminPending').textContent = pending.length;
+  document.getElementById('adminRevenue').textContent = state.tx.filter(t=>t.status==='approved').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('adminPendingList').innerHTML = pending.map(t=>`
+    <div class="row">
+      <span>${t.amount} ETB · ${t.method}<br><span class="muted">${t.ref} · ${t.date}</span></span>
+      <span>
+        <button class="copybtn" style="background:var(--accent2); color:#08240f;" onclick="reviewTx(${t.id},'approved')">${i18n[lang].approve}</button>
+        <button class="copybtn" style="background:var(--danger); color:#2a0505; margin-left:4px;" onclick="reviewTx(${t.id},'rejected')">${i18n[lang].reject}</button>
+      </span>
+    </div>`).join('') || `<p class="muted">No pending deposits.</p>`;
+}
+function reviewTx(id, decision){
+  const t = state.tx.find(x=>x.id===id);
+  if(!t) return;
+  t.status = decision;
+  if(decision==='approved'){ state.points += Math.floor(t.amount/15); state.earned += Math.floor(t.amount/15); }
+  save(); renderAdmin(); renderWallet(); renderPoints();
+  toast(`Transaction ${decision}`);
+}
+function sendBroadcast(){
+  const msg = document.getElementById('broadcastText').value.trim();
+  if(!msg){ toast('Write a message first'); return; }
+  toast('Broadcast sent (demo — not connected to real users)');
+  document.getElementById('broadcastText').value='';
+}
+
+// ---------- Init ----------
+function renderAll(){ renderWallet(); renderPoints(); renderReferral(); renderStatus(); renderAdmin(); }
+applyI18n();
+renderAll();
+showTab('wallet');
+</script>
+</body>
+</html>
